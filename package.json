@@ -1,0 +1,31 @@
+{
+  "name": "@rfp/infrastructure",
+  "version": "1.0.0",
+  "description": "Infrastructure as Code and API Contracts for RFP Response Platform",
+  "private": true,
+  "scripts": {
+    "validate": "npm run validate:openapi && npm run validate:events",
+    "validate:openapi": "spectral lint rfp-contracts/openapi/*.yaml",
+    "validate:events": "ajv validate -s rfp-contracts/events/*.schema.json --all-errors",
+    "deploy:dev": "./scripts/deploy-infra.sh dev",
+    "deploy:prod": "./scripts/deploy-infra.sh prod",
+    "publish:outputs": "./scripts/publish-outputs.sh"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "^6.11.0",
+    "ajv-cli": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/rfp-infrastructure.git"
+  },
+  "keywords": [
+    "infrastructure",
+    "cloudformation",
+    "helm",
+    "openapi",
+    "contracts"
+  ],
+  "author": "RFP Platform Team",
+  "license": "PROPRIETARY"
+}
