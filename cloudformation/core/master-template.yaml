@@ -47,7 +47,7 @@ Resources:
   MainInfrastructureStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}main-template.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}core/main-template.yaml'
       Parameters:
         Environment: !Ref Environment
         SamApiKey: !Ref SamApiKey
@@ -65,7 +65,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: MainInfrastructureStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}dynamodb-tables.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/dynamodb-tables.yaml'
       Parameters:
         Environment: !Ref Environment
         BucketPrefix: !Ref BucketPrefix
@@ -82,7 +82,7 @@ Resources:
       - MainInfrastructureStack
       - DynamoDbTablesStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}lambda-functions.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/lambda-functions.yaml'
       Parameters:
         Environment: !Ref Environment
         SamApiKey: !Ref SamApiKey
@@ -102,7 +102,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: LambdaFunctionsStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}eventbridge-rules.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/eventbridge-rules.yaml'
       Parameters:
         Environment: !Ref Environment
         SamGovDailyDownloadFunctionArn: !GetAtt LambdaFunctionsStack.Outputs.SamGovDailyDownloadFunctionArn
@@ -120,7 +120,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: LambdaFunctionsStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}s3-bucket-policies.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-bucket-policies.yaml'
       Parameters:
         Environment: !Ref Environment
         SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn
@@ -136,7 +136,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: LambdaFunctionsStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}iam-security-policies-simple.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}core/iam-security-policies-simple.yaml'
       Parameters:
         Environment: !Ref Environment
         BucketPrefix: !Ref BucketPrefix
@@ -151,7 +151,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: LambdaFunctionsStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}monitoring-alerting.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/monitoring-alerting.yaml'
       Parameters:
         Environment: !Ref Environment
         AlertEmail: !Ref CompanyContact
@@ -170,7 +170,7 @@ Resources:
       - S3BucketPoliciesStack
       - IAMSecurityPoliciesStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}s3-event-notifications.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-event-notifications.yaml'
       Parameters:
         Environment: !Ref Environment
         SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn

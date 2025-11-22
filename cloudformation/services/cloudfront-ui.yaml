@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFront distribution with Origin Access Identity for S3-hosted UI'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues: ['dev', 'staging', 'prod']
+    Description: 'Environment name'
+  
+  BucketPrefix:
+    Type: String
+    Default: ''
+    Description: 'Optional prefix for resource naming'
+  
+  UiBucketName:
+    Type: String
+    Description: 'Name of the S3 bucket containing the UI assets'
+  
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: 'Optional ACM certificate ARN for custom domain (must be in us-east-1)'
+  
+  CustomDomainName:
+    Type: String
+    Default: ''
+    Description: 'Optional custom domain name (e.g., app.example.com)'
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref CustomDomainName, '']]
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
+Resources:
+  # Origin Access Identity for S3 Bucket Access
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${BucketPrefix}rfp-ui-${Environment}'
+
+  # S3 Bucket Policy to Allow CloudFront Access
+  UiBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UiBucketName
+      PolicyDocument:
+        Statement:
+          - Sid: CloudFrontOAIReadAccess
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${UiBucketName}/*'
+          - Sid: CloudFrontOAIListAccess
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            Action: s3:ListBucket
+            Resource: !Sub 'arn:aws:s3:::${UiBucketName}'
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: UiBucketPolicy
+    Properties:
+      DistributionConfig:
+        Comment: !Sub 'RFP UI Distribution - ${Environment}'
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100  # Use only North America and Europe edge locations
+        
+        # Origin Configuration
+        Origins:
+          - Id: S3-UI-Origin
+            DomainName: !Sub '${UiBucketName}.s3.${AWS::Region}.amazonaws.com'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        
+        # Default Cache Behavior
+        DefaultCacheBehavior:
+          TargetOriginId: S3-UI-Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 86400      # 1 day
+          MaxTTL: 31536000       # 1 year
+        
+        # Custom Error Responses for SPA
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+        
+        # Custom Domain Configuration (optional)
+        Aliases: !If
+          - HasCustomDomain
+          - [!Ref CustomDomainName]
+          - !Ref AWS::NoValue
+        
+        ViewerCertificate: !If
+          - HasCertificate
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        
+        # Logging Configuration (optional - uncomment to enable)
+        # Logging:
+        #   Bucket: !Sub '${LoggingBucket}.s3.amazonaws.com'
+        #   Prefix: !Sub 'cloudfront/${Environment}/'
+        #   IncludeCookies: false
+      
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: 'RFP-Response-Platform'
+
+  # CloudWatch Alarm for 4xx Errors
+  CloudFront4xxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-4xx-errors-${Environment}'
+      AlarmDescription: 'Alert when CloudFront 4xx error rate is high'
+      MetricName: 4xxErrorRate
+      Namespace: AWS/CloudFront
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5.0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DistributionId
+          Value: !Ref CloudFrontDistribution
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm for 5xx Errors
+  CloudFront5xxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-5xx-errors-${Environment}'
+      AlarmDescription: 'Alert when CloudFront 5xx error rate is high'
+      MetricName: 5xxErrorRate
+      Namespace: AWS/CloudFront
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1.0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DistributionId
+          Value: !Ref CloudFrontDistribution
+      TreatMissingData: notBreaching
+
+Outputs:
+  CloudFrontDistributionId:
+    Description: 'CloudFront distribution ID'
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
+  
+  CloudFrontDistributionDomainName:
+    Description: 'CloudFront distribution domain name'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DomainName'
+  
+  CloudFrontDistributionUrl:
+    Description: 'CloudFront distribution URL'
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Url'
+  
+  OriginAccessIdentityId:
+    Description: 'Origin Access Identity ID'
+    Value: !Ref CloudFrontOriginAccessIdentity
+    Export:
+      Name: !Sub '${AWS::StackName}-OAI'
+  
+  OriginAccessIdentityS3CanonicalUserId:
+    Description: 'S3 Canonical User ID for the OAI'
+    Value: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+    Export:
+      Name: !Sub '${AWS::StackName}-OAI-CanonicalUserId'
