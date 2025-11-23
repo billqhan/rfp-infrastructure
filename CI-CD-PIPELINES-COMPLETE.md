@@ -114,12 +114,13 @@ Successfully created GitHub Actions workflows for all three service repositories
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION`
 
-### 3. rfp-java-api Pipeline ✅
+### 3. rfp-java-api Pipelines ✅
 
-**File:** `.github/workflows/ci-cd.yml`  
-**Commit:** `4c7b068`
+**Two deployment options available:**
+- **EKS (Kubernetes)**: `.github/workflows/ci-cd.yml`
+- **ECS (Fargate)**: `.github/workflows/ci-cd-ecs.yml`
 
-**Pipeline Stages:**
+#### Common Stages (Both Workflows)
 
 1. **Validate Contracts** 📋
    - Checkout code with submodules
@@ -146,6 +147,8 @@ Successfully created GitHub Actions workflows for all three service repositories
    - Cache layers for efficiency
    - Tags: branch name, SHA, semver, latest
 
+#### EKS Deployment (ci-cd.yml)
+
 4. **Deploy to Development (EKS)** 🚀
    - Triggered on push to `develop` branch
    - Configure AWS credentials
@@ -155,7 +158,8 @@ Successfully created GitHub Actions workflows for all three service repositories
    - Wait for rollout (5m timeout)
    - Verify pods are running
    - Namespace: `dev`
-   - Environment URL: https://api-dev.rfp-platform.example.com
+   - Environment: `development`
+   - URL: https://api-dev.rfp-platform.example.com
 
 5. **Deploy to Production (EKS)** 🎯
    - Triggered on push to `main` branch
@@ -168,15 +172,59 @@ Successfully created GitHub Actions workflows for all three service repositories
    - Run smoke tests (health check)
    - Create deployment tag
    - Namespace: `prod`
-   - Environment URL: https://api.rfp-platform.example.com
+   - Environment: `production`
+   - URL: https://api.rfp-platform.example.com
 
-**Required Secrets:**
+**EKS Required Secrets:**
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION`
 - `ECR_REGISTRY`
 - `EKS_CLUSTER_NAME_DEV`
 - `EKS_CLUSTER_NAME_PROD`
+
+#### ECS Deployment (ci-cd-ecs.yml)
+
+4. **Deploy to Development (ECS)** 🚀
+   - Triggered on push to `develop` branch
+   - Configure AWS credentials
+   - Download or fetch task definition
+   - Render task definition with new image tag
+   - Deploy to ECS Fargate
+   - Wait for service stability
+   - Verify deployment status
+   - Environment: `development-ecs`
+   - URL: https://api-dev.rfp-platform.example.com
+
+5. **Deploy to Production (ECS)** 🎯
+   - Triggered on push to `main` branch
+   - Configure AWS credentials
+   - Download or fetch task definition
+   - Render task definition with new image tag
+   - Deploy to ECS Fargate
+   - Wait for service stability
+   - Verify deployment status
+   - Run smoke tests (health check)
+   - Create deployment tag
+   - Environment: `production-ecs`
+   - URL: https://api.rfp-platform.example.com
+
+**ECS Required Secrets:**
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `ECR_REGISTRY`
+- `ECS_CLUSTER_DEV`
+- `ECS_CLUSTER_PROD`
+- `ECS_SERVICE_DEV`
+- `ECS_SERVICE_PROD`
+- `ECS_TASK_FAMILY_DEV`
+- `ECS_TASK_FAMILY_PROD`
+- `API_ENDPOINT_PROD` (optional, for smoke tests)
+
+**Task Definition Templates:**
+- `task-definition-dev.json` - Development ECS task configuration
+- `task-definition-prod.json` - Production ECS task configuration (higher resources)
 
 ## Pipeline Features
 

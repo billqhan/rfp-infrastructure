@@ -39,19 +39,50 @@ This repository contains:
 
 ### Deploying Infrastructure
 
+Deploy the complete infrastructure stack to AWS:
+
 ```bash
-./scripts/deploy-infra.sh <environment>
+# Deploy to development environment
+./scripts/deploy-infra.sh dev
+
+# Deploy to production environment
+./scripts/deploy-infra.sh prod
+
+# Optionally specify custom templates bucket and SAM API key
+./scripts/deploy-infra.sh dev my-templates-bucket my-sam-api-key
 ```
+
+The deployment script will:
+1. 🪣 Create or verify S3 templates bucket
+2. 📤 Upload CloudFormation templates to S3
+3. 🏗️ Deploy master CloudFormation stack (with nested stacks)
+4. ☁️ Optionally deploy CloudFront distribution for UI
+5. 📝 Publish stack outputs for downstream services
+
+**What gets deployed:**
+- S3 buckets for data storage and UI hosting
+- DynamoDB tables for opportunities and matches
+- Lambda functions and IAM roles
+- SQS queues and SNS topics
+- EventBridge rules for scheduling
+- VPC and networking (if configured)
 
 ### Publishing Outputs
 
 After infrastructure deployment, publish stack outputs for downstream services:
 
 ```bash
-./scripts/publish-outputs.sh <environment>
+./scripts/publish-outputs.sh dev
 ```
 
-This creates `cloudformation/outputs/<env>.json` with endpoints, bucket names, and resource ARNs.
+This creates `cloudformation/outputs/dev.json` with:
+- API Gateway endpoints
+- S3 bucket names
+- DynamoDB table names
+- Lambda function ARNs
+- CloudFront distribution details
+
+**Downstream services** (rfp-ui, rfp-java-api, rfp-lambdas) consume these outputs for configuration.
 
 ## Contracts
 

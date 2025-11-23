@@ -70,27 +70,80 @@ ECR_REGISTRY
   Required: Yes
   Example: 123456789012.dkr.ecr.us-east-1.amazonaws.com
 
+# EKS Deployment Secrets (ci-cd.yml workflow)
 EKS_CLUSTER_NAME_DEV
   Description: EKS cluster name for development
-  Required: Yes (for dev deployments)
+  Required: Yes (for EKS dev deployments)
   Example: rfp-platform-dev
 
 EKS_CLUSTER_NAME_PROD
   Description: EKS cluster name for production
-  Required: Yes (for prod deployments)
+  Required: Yes (for EKS prod deployments)
   Example: rfp-platform-prod
+
+# ECS Deployment Secrets (ci-cd-ecs.yml workflow)
+ECS_CLUSTER_DEV
+  Description: ECS cluster name for development
+  Required: Yes (for ECS dev deployments)
+  Example: dev-ecs-cluster
+
+ECS_CLUSTER_PROD
+  Description: ECS cluster name for production
+  Required: Yes (for ECS prod deployments)
+  Example: prod-ecs-cluster
+
+ECS_SERVICE_DEV
+  Description: ECS service name for development
+  Required: Yes (for ECS dev deployments)
+  Example: dev-java-api-service
+
+ECS_SERVICE_PROD
+  Description: ECS service name for production
+  Required: Yes (for ECS prod deployments)
+  Example: prod-java-api-service
+
+ECS_TASK_FAMILY_DEV
+  Description: ECS task definition family for development
+  Required: Yes (for ECS dev deployments)
+  Example: dev-java-api-task
+
+ECS_TASK_FAMILY_PROD
+  Description: ECS task definition family for production
+  Required: Yes (for ECS prod deployments)
+  Example: prod-java-api-task
+
+API_ENDPOINT_PROD
+  Description: Production API endpoint URL for smoke tests (optional)
+  Required: No
+  Example: https://api.rfp-platform.example.com
 ```
 
 ## GitHub Environments
 
 Create these environments in each repository's settings:
 
-### development
+### rfp-ui
+- **development**: For S3/CloudFront dev deployments
+- **production**: For S3/CloudFront prod deployments
+
+### rfp-lambdas
+- **development**: For Lambda dev deployments
+- **production**: For Lambda prod deployments
+
+### rfp-java-api
+- **development**: For EKS dev deployments
+- **production**: For EKS prod deployments
+- **development-ecs**: For ECS dev deployments
+- **production-ecs**: For ECS prod deployments
+
+### Environment Configuration
+
+**development / development-ecs**
 - Protection rules: None (optional: require approval)
 - Environment secrets: Can override common secrets with dev-specific values
 - URL: Set to development environment URL
 
-### production
+**production / production-ecs**
 - Protection rules: 
   - ✅ Required reviewers (at least 1)
   - ✅ Wait timer (optional: 5 minutes)
@@ -166,12 +219,28 @@ set_secret "rfp-ui" "CLOUDFRONT_DISTRIBUTION_ID_PROD" "$CF_ID_PROD"
 
 # rfp-java-api specific secrets
 read -p "ECR Registry URL: " ECR_REGISTRY
+
+# EKS secrets (for ci-cd.yml)
 read -p "EKS Cluster Name (Dev): " EKS_DEV
 read -p "EKS Cluster Name (Prod): " EKS_PROD
+
+# ECS secrets (for ci-cd-ecs.yml)
+read -p "ECS Cluster (Dev): " ECS_CLUSTER_DEV
+read -p "ECS Cluster (Prod): " ECS_CLUSTER_PROD
+read -p "ECS Service (Dev): " ECS_SERVICE_DEV
+read -p "ECS Service (Prod): " ECS_SERVICE_PROD
+read -p "ECS Task Family (Dev): " ECS_TASK_FAMILY_DEV
+read -p "ECS Task Family (Prod): " ECS_TASK_FAMILY_PROD
 
 set_secret "rfp-java-api" "ECR_REGISTRY" "$ECR_REGISTRY"
 set_secret "rfp-java-api" "EKS_CLUSTER_NAME_DEV" "$EKS_DEV"
 set_secret "rfp-java-api" "EKS_CLUSTER_NAME_PROD" "$EKS_PROD"
+set_secret "rfp-java-api" "ECS_CLUSTER_DEV" "$ECS_CLUSTER_DEV"
+set_secret "rfp-java-api" "ECS_CLUSTER_PROD" "$ECS_CLUSTER_PROD"
+set_secret "rfp-java-api" "ECS_SERVICE_DEV" "$ECS_SERVICE_DEV"
+set_secret "rfp-java-api" "ECS_SERVICE_PROD" "$ECS_SERVICE_PROD"
+set_secret "rfp-java-api" "ECS_TASK_FAMILY_DEV" "$ECS_TASK_FAMILY_DEV"
+set_secret "rfp-java-api" "ECS_TASK_FAMILY_PROD" "$ECS_TASK_FAMILY_PROD"
 
 echo "✅ All secrets configured!"
 ```
