@@ -146,21 +146,21 @@ Resources:
         - Key: Project
           Value: 'AI-RFP-Response-Agent'
 
-  # Monitoring and Alerting Stack
-  MonitoringAlertingStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: LambdaFunctionsStack
-    Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/monitoring-alerting.yaml'
-      Parameters:
-        Environment: !Ref Environment
-        AlertEmail: !Ref CompanyContact
-        BucketPrefix: !Ref BucketPrefix
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Project
-          Value: 'AI-RFP-Response-Agent'
+  # Monitoring and Alerting Stack - DISABLED
+  # MonitoringAlertingStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: LambdaFunctionsStack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/monitoring-alerting.yaml'
+  #     Parameters:
+  #       Environment: !Ref Environment
+  #       AlertEmail: !Ref CompanyContact
+  #       BucketPrefix: !Ref BucketPrefix
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Project
+  #         Value: 'AI-RFP-Response-Agent'
 
   # S3 Event Notifications Stack
   S3EventNotificationsStack:
@@ -234,17 +234,18 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-SamProcessingKMSKey'
   
-  SamAlertsTopicArn:
-    Description: 'ARN of the SNS topic for alerts'
-    Value: !GetAtt MonitoringAlertingStack.Outputs.SamAlertsTopicArn
-    Export:
-      Name: !Sub '${AWS::StackName}-SamAlertsTopic'
-  
-  SamProcessingDashboardUrl:
-    Description: 'URL of the CloudWatch dashboard'
-    Value: !GetAtt MonitoringAlertingStack.Outputs.SamProcessingDashboardUrl
-    Export:
-      Name: !Sub '${AWS::StackName}-SamProcessingDashboard'
+  # DISABLED - CloudWatch monitoring outputs
+  # SamAlertsTopicArn:
+  #   Description: 'ARN of the SNS topic for alerts'
+  #   Value: !GetAtt MonitoringAlertingStack.Outputs.SamAlertsTopicArn
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-SamAlertsTopic'
+  # 
+  # SamProcessingDashboardUrl:
+  #   Description: 'URL of the CloudWatch dashboard'
+  #   Value: !GetAtt MonitoringAlertingStack.Outputs.SamProcessingDashboardUrl
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-SamProcessingDashboard'
   
   CloudFrontDistributionId:
     Description: 'CloudFront distribution ID for the UI'

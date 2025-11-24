@@ -72,14 +72,15 @@ Resources:
                     - HasBucketPrefix
                     - !Sub 'arn:aws:s3:::${BucketPrefix}-sam-download-files-logs-${Environment}/*'
                     - !Sub 'arn:aws:s3:::sam-download-files-logs-${Environment}/*'
-        - PolicyName: CloudWatchMetrics
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudwatch:PutMetricData
-                Resource: '*'
+        # DISABLED - CloudWatch custom metrics
+        # - PolicyName: CloudWatchMetrics
+        #   PolicyDocument:
+        #     Version: '2012-10-17'
+        #     Statement:
+        #       - Effect: Allow
+        #         Action:
+        #           - cloudwatch:PutMetricData
+        #         Resource: '*'
 
   SamJsonProcessorRole:
     Type: AWS::IAM::Role
@@ -121,18 +122,17 @@ Resources:
                   - s3:PutObjectAcl
                 Resource: !If 
                   - HasBucketPrefix
-                  - !Sub 'arn:aws:s3:::${BucketPrefix}-sam-extracted-json-resources-${Environment}/*'
-                  - !Sub 'arn:aws:s3:::sam-extracted-json-resources-${Environment}/*'
-        - PolicyName: CloudWatchMetrics
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudwatch:PutMetricData
-                Resource: '*'
-
-  SamSqsGenerateMatchReportsRole:
+                    - !Sub 'arn:aws:s3:::${BucketPrefix}-sam-extracted-json-resources-${Environment}/*'
+                    - !Sub 'arn:aws:s3:::sam-extracted-json-resources-${Environment}/*'
+        # DISABLED - CloudWatch custom metrics
+        # - PolicyName: CloudWatchMetrics
+        #   PolicyDocument:
+        #     Version: '2012-10-17'
+        #     Statement:
+        #       - Effect: Allow
+        #         Action:
+        #           - cloudwatch:PutMetricData
+        #         Resource: '*'  SamSqsGenerateMatchReportsRole:
     Type: AWS::IAM::Role
     Properties:
 
@@ -198,14 +198,15 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:Retrieve
                 Resource: '*'
-        - PolicyName: CloudWatchMetrics
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - cloudwatch:PutMetricData
-                Resource: '*'
+        # DISABLED - CloudWatch custom metrics
+        # - PolicyName: CloudWatchMetrics
+        #   PolicyDocument:
+        #     Version: '2012-10-17'
+        #     Statement:
+        #       - Effect: Allow
+        #         Action:
+        #           - cloudwatch:PutMetricData
+        #         Resource: '*'
 
   SamProduceUserReportRole:
     Type: AWS::IAM::Role

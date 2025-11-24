@@ -177,41 +177,40 @@ Resources:
         - Key: Project
           Value: 'RFP-Response-Platform'
 
-  # CloudWatch Alarm for 4xx Errors
-  CloudFront4xxErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-4xx-errors-${Environment}'
-      AlarmDescription: 'Alert when CloudFront 4xx error rate is high'
-      MetricName: 4xxErrorRate
-      Namespace: AWS/CloudFront
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 5.0
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: DistributionId
-          Value: !Ref CloudFrontDistribution
-      TreatMissingData: notBreaching
-
-  # CloudWatch Alarm for 5xx Errors
-  CloudFront5xxErrorAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-5xx-errors-${Environment}'
-      AlarmDescription: 'Alert when CloudFront 5xx error rate is high'
-      MetricName: 5xxErrorRate
-      Namespace: AWS/CloudFront
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 1.0
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: DistributionId
-          Value: !Ref CloudFrontDistribution
-      TreatMissingData: notBreaching
+  # DISABLED - CloudWatch Alarms
+  # CloudFront4xxErrorAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-4xx-errors-${Environment}'
+  #     AlarmDescription: 'Alert when CloudFront 4xx error rate is high'
+  #     MetricName: 4xxErrorRate
+  #     Namespace: AWS/CloudFront
+  #     Statistic: Average
+  #     Period: 300
+  #     EvaluationPeriods: 2
+  #     Threshold: 5.0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     Dimensions:
+  #       - Name: DistributionId
+  #         Value: !Ref CloudFrontDistribution
+  #     TreatMissingData: notBreaching
+  #
+  # CloudFront5xxErrorAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmName: !Sub '${BucketPrefix}rfp-cloudfront-5xx-errors-${Environment}'
+  #     AlarmDescription: 'Alert when CloudFront 5xx error rate is high'
+  #     MetricName: 5xxErrorRate
+  #     Namespace: AWS/CloudFront
+  #     Statistic: Average
+  #     Period: 300
+  #     EvaluationPeriods: 2
+  #     Threshold: 1.0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     Dimensions:
+  #       - Name: DistributionId
+  #         Value: !Ref CloudFrontDistribution
+  #     TreatMissingData: notBreaching
 
 Outputs:
   CloudFrontDistributionId:
