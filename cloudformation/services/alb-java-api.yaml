@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Application Load Balancer for Java API ECS Service'
+
+Parameters:
+  Environment:
+    Type: String
+    Description: 'Environment name'
+    AllowedValues: ['dev', 'staging', 'prod']
+  
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'VPC ID where the ALB will be deployed'
+  
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'Public subnet IDs for the ALB (at least 2 in different AZs)'
+  
+  EcsClusterName:
+    Type: String
+    Description: 'Name of the ECS cluster'
+  
+  EcsServiceName:
+    Type: String
+    Description: 'Name of the ECS service'
+  
+  ContainerName:
+    Type: String
+    Default: 'java-api'
+    Description: 'Name of the container in the task definition'
+  
+  ContainerPort:
+    Type: Number
+    Default: 8080
+    Description: 'Port number on the container'
+  
+  HealthCheckPath:
+    Type: String
+    Default: '/api/actuator/health'
+    Description: 'Health check path for the target group'
+
+Resources:
+  # Security Group for ALB
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-java-api-alb-sg'
+      GroupDescription: 'Security group for Java API ALB'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        # Allow HTTP from anywhere
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow HTTP traffic'
+        # Allow HTTPS from anywhere (for future use)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow HTTPS traffic'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-java-api-alb-sg'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${Environment}-java-api-alb'
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-java-api-alb'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Target Group
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${Environment}-java-api-tg'
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-java-api-tg'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # HTTP Listener
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # Security Group for ECS Tasks (to allow traffic from ALB)
+  EcsTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${Environment}-java-api-task-sg'
+      GroupDescription: 'Security group for Java API ECS tasks'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        # Allow traffic from ALB
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+          Description: 'Allow traffic from ALB'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-java-api-task-sg'
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  LoadBalancerUrl:
+    Description: 'URL of the Application Load Balancer'
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+    Export:
+      Name: !Sub '${Environment}-java-api-alb-url'
+  
+  LoadBalancerDnsName:
+    Description: 'DNS name of the Application Load Balancer'
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${Environment}-java-api-alb-dns'
+  
+  LoadBalancerArn:
+    Description: 'ARN of the Application Load Balancer'
+    Value: !Ref ApplicationLoadBalancer
+    Export:
+      Name: !Sub '${Environment}-java-api-alb-arn'
+  
+  TargetGroupArn:
+    Description: 'ARN of the Target Group'
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub '${Environment}-java-api-tg-arn'
+  
+  AlbSecurityGroupId:
+    Description: 'Security Group ID of the ALB'
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub '${Environment}-java-api-alb-sg-id'
+  
+  EcsTaskSecurityGroupId:
+    Description: 'Security Group ID for ECS tasks'
+    Value: !Ref EcsTaskSecurityGroup
+    Export:
+      Name: !Sub '${Environment}-java-api-task-sg-id'
