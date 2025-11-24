@@ -17,6 +17,10 @@ Parameters:
     Type: String
     Description: 'Name of the S3 bucket containing the UI assets'
   
+  AlbDnsName:
+    Type: String
+    Description: 'DNS name of the Application Load Balancer for Java API'
+  
   CertificateArn:
     Type: String
     Default: ''
@@ -73,12 +77,51 @@ Resources:
         
         # Origin Configuration
         Origins:
+          # S3 origin for UI static files
           - Id: S3-UI-Origin
             DomainName: !Sub '${UiBucketName}.s3.${AWS::Region}.amazonaws.com'
             S3OriginConfig:
               OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+          # ALB origin for Java API
+          - Id: ALB-API-Origin
+            DomainName: !Ref AlbDnsName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
         
-        # Default Cache Behavior
+        # Cache Behaviors (order matters - evaluated top to bottom)
+        CacheBehaviors:
+          # API requests go to ALB
+          - PathPattern: '/api/*'
+            TargetOriginId: ALB-API-Origin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              QueryString: true
+              Headers:
+                - Authorization
+                - Content-Type
+                - Accept
+              Cookies:
+                Forward: all
+            MinTTL: 0
+            DefaultTTL: 0          # No caching for API
+            MaxTTL: 0
+        
+        # Default Cache Behavior (for UI files)
         DefaultCacheBehavior:
           TargetOriginId: S3-UI-Origin
           ViewerProtocolPolicy: redirect-to-https

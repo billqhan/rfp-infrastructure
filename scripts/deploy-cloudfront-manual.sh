@@ -73,8 +73,24 @@ if ! aws s3 ls "s3://$TEMPLATES_BUCKET/services/cloudfront-ui.yaml" >/dev/null 2
 fi
 log_success "Templates verified"
 
-# Step 5: Create CloudFront stack
-log_info "Step 5: Creating CloudFront stack..."
+# Step 5: Get ALB DNS name
+log_info "Step 5: Getting ALB DNS name..."
+ALB_STACK_NAME="rfp-${ENVIRONMENT}-java-api-alb"
+ALB_DNS_NAME=$(aws cloudformation describe-stacks \
+    --stack-name "$ALB_STACK_NAME" \
+    --region "$REGION" \
+    --query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerDnsName`].OutputValue' \
+    --output text 2>/dev/null || echo "")
+
+if [ -z "$ALB_DNS_NAME" ]; then
+    log_error "ALB DNS name not found. Deploy ALB first:"
+    log_info "cd ../.. && ./scripts/deploy-alb.sh"
+    exit 1
+fi
+log_success "ALB DNS: $ALB_DNS_NAME"
+
+# Step 6: Create CloudFront stack
+log_info "Step 6: Creating CloudFront stack with API proxy..."
 if aws cloudformation describe-stacks --stack-name "$CLOUDFRONT_STACK_NAME" --region "$REGION" >/dev/null 2>&1; then
     log_warning "CloudFront stack already exists: $CLOUDFRONT_STACK_NAME"
     log_info "Updating stack..."
@@ -85,6 +101,7 @@ if aws cloudformation describe-stacks --stack-name "$CLOUDFRONT_STACK_NAME" --re
             "ParameterKey=Environment,ParameterValue=$ENVIRONMENT" \
             "ParameterKey=BucketPrefix,ParameterValue=$BUCKET_PREFIX" \
             "ParameterKey=UiBucketName,ParameterValue=$UI_BUCKET_NAME" \
+            "ParameterKey=AlbDnsName,ParameterValue=$ALB_DNS_NAME" \
         --region "$REGION"
     
     log_info "Waiting for stack update (10-15 minutes)..."
@@ -98,6 +115,8 @@ else
         --parameters \
             "ParameterKey=Environment,ParameterValue=$ENVIRONMENT" \
             "ParameterKey=BucketPrefix,ParameterValue=$BUCKET_PREFIX" \
+            "ParameterKey=UiBucketName,ParameterValue=$UI_BUCKET_NAME" \
+            "ParameterKey=AlbDnsName,ParameterValue=$ALB_DNS_NAME" \
             "ParameterKey=UiBucketName,ParameterValue=$UI_BUCKET_NAME" \
         --tags \
             "Key=Environment,Value=$ENVIRONMENT" \
