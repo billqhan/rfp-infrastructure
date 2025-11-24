@@ -173,6 +173,29 @@ Resources:
             Status: Enabled
             ExpirationInDays: 90
 
+  # UI Bucket for React Application
+  UiBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !If 
+        - HasBucketPrefix
+        - !Sub '${BucketPrefix}-ui-${Environment}'
+        - !Sub 'rfp-ui-${Environment}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: 'AI-RFP-Response-Agent'
+
   # SQS Queue with Dead Letter Queue
   SqsSamJsonMessagesDeadLetterQueue:
     Type: AWS::SQS::Queue
@@ -222,3 +245,9 @@ Outputs:
     Value: !GetAtt SqsSamJsonMessagesQueue.Arn
     Export:
       Name: !Sub '${AWS::StackName}-SqsSamJsonMessagesQueueArn'
+  
+  UiBucketName:
+    Description: 'Name of the UI bucket'
+    Value: !Ref UiBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-UiBucket'

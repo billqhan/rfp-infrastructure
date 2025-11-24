@@ -46,18 +46,11 @@ fi
 
 # Upload all CloudFormation templates to S3
 echo "📤 Uploading CloudFormation templates to S3..."
-aws s3 sync "$CLOUDFORMATION_DIR/core/" "s3://$TEMPLATES_BUCKET/cloudformation/core/" \
+aws s3 sync "$CLOUDFORMATION_DIR/" "s3://$TEMPLATES_BUCKET/" \
     --exclude "*.md" \
-    --exclude "*.json"
-aws s3 sync "$CLOUDFORMATION_DIR/services/" "s3://$TEMPLATES_BUCKET/cloudformation/services/" \
-    --exclude "*.md"
+    --exclude ".DS_Store" \
+    --delete
 echo "✅ Templates uploaded"
-
-# Prompt for SAM API key if not provided
-if [ -z "$SAM_API_KEY" ]; then
-    read -sp "🔑 Enter SAM.gov API key: " SAM_API_KEY
-    echo
-fi
 
 # Load parameters from parameters file if it exists
 PARAMS_FILE="$CLOUDFORMATION_DIR/core/parameters-$ENVIRONMENT.json"
@@ -72,75 +65,81 @@ if [ -f "$PARAMS_FILE" ]; then
     COMPANY_NAME=$(jq -r '.[] | select(.ParameterKey=="CompanyName") | .ParameterValue' "$PARAMS_FILE" || echo "Your Company")
     COMPANY_CONTACT=$(jq -r '.[] | select(.ParameterKey=="CompanyContact") | .ParameterValue' "$PARAMS_FILE" || echo "contact@yourcompany.com")
     KNOWLEDGE_BASE_ID=$(jq -r '.[] | select(.ParameterKey=="KnowledgeBaseId") | .ParameterValue' "$PARAMS_FILE" || echo "PLACEHOLDER")
+    
+    # Load SAM API key from params if not provided via command line
+    if [ -z "$SAM_API_KEY" ]; then
+        SAM_API_KEY=$(jq -r '.[] | select(.ParameterKey=="SamApiKey") | .ParameterValue' "$PARAMS_FILE" || echo "")
+    fi
 fi
 
-# Deploy the master template (which deploys all nested stacks)
-echo "🏗️  Deploying master CloudFormation stack..."
-aws cloudformation deploy \
-    --template-file "$CLOUDFORMATION_DIR/core/master-template.yaml" \
-    --stack-name "rfp-$ENVIRONMENT-master" \
-    --parameter-overrides \
-        Environment="$ENVIRONMENT" \
-        SamApiKey="$SAM_API_KEY" \
-        CompanyName="$COMPANY_NAME" \
-        CompanyContact="$COMPANY_CONTACT" \
-        TemplatesBucketName="$TEMPLATES_BUCKET" \
-        TemplatesBucketPrefix="cloudformation/" \
-        BucketPrefix="$BUCKET_PREFIX" \
-        KnowledgeBaseId="$KNOWLEDGE_BASE_ID" \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-    --tags \
-        Environment="$ENVIRONMENT" \
-        Project="RFP-Response-Platform" \
-        ManagedBy="CloudFormation"
+# Prompt for SAM API key if still not provided
+if [ -z "$SAM_API_KEY" ] || [ "$SAM_API_KEY" = "YOUR_SAM_API_KEY_HERE" ]; then
+    read -sp "🔑 Enter SAM.gov API key: " SAM_API_KEY
+    echo
+fi
+
+# Check if stack exists
+STACK_NAME="rfp-$ENVIRONMENT-master"
+if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region us-east-1 >/dev/null 2>&1; then
+    echo "🔄 Updating existing CloudFormation stack..."
+    aws cloudformation update-stack \
+        --stack-name "$STACK_NAME" \
+        --template-url "https://$TEMPLATES_BUCKET.s3.amazonaws.com/core/master-template.yaml" \
+        --parameters file://"$PARAMS_FILE" \
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+        --region us-east-1
+    
+    echo "⏳ Waiting for stack update to complete..."
+    aws cloudformation wait stack-update-complete --stack-name "$STACK_NAME" --region us-east-1
+else
+    echo "🏗️  Creating new CloudFormation stack..."
+    aws cloudformation create-stack \
+        --stack-name "$STACK_NAME" \
+        --template-url "https://$TEMPLATES_BUCKET.s3.amazonaws.com/core/master-template.yaml" \
+        --parameters file://"$PARAMS_FILE" \
+        --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+        --tags \
+            Key=Environment,Value="$ENVIRONMENT" \
+            Key=Project,Value="RFP-Response-Platform" \
+            Key=ManagedBy,Value="CloudFormation" \
+        --region us-east-1
+    
+    echo "⏳ Waiting for stack creation to complete..."
+    aws cloudformation wait stack-create-complete --stack-name "$STACK_NAME" --region us-east-1
+fi
 
 echo "✅ Master stack deployment complete"
-
-# Optionally deploy API Gateway stack (if Lambda functions exist)
-if [ -f "$CLOUDFORMATION_DIR/services/api-gateway.yaml" ]; then
-    echo "🌐 Checking if API Gateway stack should be deployed..."
-    echo "⚠️  API Gateway requires Lambda function ARNs from the master stack"
-    echo "   Run this after Lambda functions are deployed, or skip for now"
-    read -p "Deploy API Gateway? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "🌐 Deploying API Gateway stack..."
-        # Note: You'll need to pass Lambda ARNs from the master stack outputs
-        echo "ℹ️  Manual deployment required with Lambda ARNs from stack outputs"
-    fi
-fi
-
-# Optionally deploy CloudFront stack (if UI bucket exists)
-if [ -f "$CLOUDFORMATION_DIR/services/cloudfront-ui.yaml" ]; then
-    echo "☁️  Checking if CloudFront distribution should be deployed..."
-    read -p "Deploy CloudFront for UI? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        UI_BUCKET_NAME="${BUCKET_PREFIX}sam-website-$ENVIRONMENT"
-        echo "☁️  Deploying CloudFront distribution for bucket: $UI_BUCKET_NAME"
-        aws cloudformation deploy \
-            --template-file "$CLOUDFORMATION_DIR/services/cloudfront-ui.yaml" \
-            --stack-name "rfp-$ENVIRONMENT-cloudfront" \
-            --parameter-overrides \
-                Environment="$ENVIRONMENT" \
-                BucketPrefix="$BUCKET_PREFIX" \
-                UiBucketName="$UI_BUCKET_NAME" \
-            --capabilities CAPABILITY_IAM \
-            --tags \
-                Environment="$ENVIRONMENT" \
-                Project="RFP-Response-Platform"
-        echo "✅ CloudFront distribution deployed"
-    fi
-fi
 
 # Publish outputs
 echo "📝 Publishing stack outputs..."
 "$SCRIPT_DIR/publish-outputs.sh" "$ENVIRONMENT"
 
+# Display CloudFront URL if available
 echo ""
 echo "🎉 Deployment complete for $ENVIRONMENT!"
 echo ""
+CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region us-east-1 \
+    --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionUrl`].OutputValue' \
+    --output text 2>/dev/null || echo "")
+
+if [ -n "$CLOUDFRONT_URL" ]; then
+    echo "🌐 CloudFront UI URL: $CLOUDFRONT_URL"
+    
+    CLOUDFRONT_ID=$(aws cloudformation describe-stacks \
+        --stack-name "$STACK_NAME" \
+        --region us-east-1 \
+        --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+        --output text 2>/dev/null || echo "")
+    
+    if [ -n "$CLOUDFRONT_ID" ]; then
+        echo "📋 CloudFront Distribution ID: $CLOUDFRONT_ID"
+    fi
+fi
+
+echo ""
 echo "📊 View your stacks:"
-echo "   aws cloudformation describe-stacks --stack-name rfp-$ENVIRONMENT-master"
+echo "   aws cloudformation describe-stacks --stack-name $STACK_NAME"
 echo ""
 echo "📋 Stack outputs saved to: $REPO_ROOT/cloudformation/outputs/$ENVIRONMENT.json"

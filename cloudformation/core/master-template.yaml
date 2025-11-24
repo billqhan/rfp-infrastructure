@@ -163,18 +163,35 @@ Resources:
           Value: 'AI-RFP-Response-Agent'
 
   # S3 Event Notifications Stack
-  S3EventNotificationsStack:
+  # TEMPORARILY DISABLED - Lambda functions are not being created by LambdaFunctionsStack
+  # S3EventNotificationsStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: 
+  #     - LambdaFunctionsStack
+  #     - S3BucketPoliciesStack
+  #     - IAMSecurityPoliciesStack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-event-notifications.yaml'
+  #     Parameters:
+  #       Environment: !Ref Environment
+  #       SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn
+  #       BucketPrefix: !Ref BucketPrefix
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Project
+  #         Value: 'AI-RFP-Response-Agent'
+
+  # CloudFront UI Distribution Stack
+  CloudFrontUIStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
-      - LambdaFunctionsStack
-      - S3BucketPoliciesStack
-      - IAMSecurityPoliciesStack
+    DependsOn: MainInfrastructureStack
     Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-event-notifications.yaml'
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/cloudfront-ui.yaml'
       Parameters:
         Environment: !Ref Environment
-        SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn
         BucketPrefix: !Ref BucketPrefix
+        UiBucketName: !GetAtt MainInfrastructureStack.Outputs.UiBucketName
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -229,3 +246,15 @@ Outputs:
     Value: !GetAtt MonitoringAlertingStack.Outputs.SamProcessingDashboardUrl
     Export:
       Name: !Sub '${AWS::StackName}-SamProcessingDashboard'
+  
+  CloudFrontDistributionId:
+    Description: 'CloudFront distribution ID for the UI'
+    Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionId
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+  
+  CloudFrontDistributionUrl:
+    Description: 'CloudFront distribution URL for the UI'
+    Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontUrl'
