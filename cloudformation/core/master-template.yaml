@@ -163,24 +163,23 @@ Resources:
           Value: 'AI-RFP-Response-Agent'
 
   # S3 Event Notifications Stack
-  # TEMPORARILY DISABLED - Lambda functions are not being created by LambdaFunctionsStack
-  # S3EventNotificationsStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   DependsOn: 
-  #     - LambdaFunctionsStack
-  #     - S3BucketPoliciesStack
-  #     - IAMSecurityPoliciesStack
-  #   Properties:
-  #     TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-event-notifications.yaml'
-  #     Parameters:
-  #       Environment: !Ref Environment
-  #       SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn
-  #       BucketPrefix: !Ref BucketPrefix
-  #     Tags:
-  #       - Key: Environment
-  #         Value: !Ref Environment
-  #       - Key: Project
-  #         Value: 'AI-RFP-Response-Agent'
+  S3EventNotificationsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - LambdaFunctionsStack
+      - S3BucketPoliciesStack
+      - IAMSecurityPoliciesStack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/s3-event-notifications.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        SqsSamJsonMessagesQueueArn: !GetAtt MainInfrastructureStack.Outputs.SqsSamJsonMessagesQueueArn
+        BucketPrefix: !Ref BucketPrefix
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: 'AI-RFP-Response-Agent'
 
   # CloudFront UI Distribution Stack
   CloudFrontUIStack:
