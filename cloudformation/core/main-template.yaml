@@ -173,7 +173,7 @@ Resources:
             Status: Enabled
             ExpirationInDays: 90
 
-  # UI Bucket for React Application
+  # UI Bucket for React Application (CloudFront Origin)
   UiBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -187,9 +187,9 @@ Resources:
               SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: false
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        RestrictPublicBuckets: false
       Tags:
         - Key: Environment
           Value: !Ref Environment
