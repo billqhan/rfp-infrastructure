@@ -26,13 +26,13 @@ Globals:
 
 Resources:
   # SQS Dead Letter Queue
+  # Note: Encryption disabled to support S3 event notifications
   SamJsonMessagesDLQ:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "${Environment}-sqs-sam-json-messages-dlq"
       MessageRetentionPeriod: 1209600  # 14 days
       VisibilityTimeout: 60
-      KmsMasterKeyId: alias/aws/sqs
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -40,6 +40,7 @@ Resources:
           Value: DeadLetterQueue
 
   # Main SQS Queue for SAM JSON messages
+  # Note: Encryption disabled to support S3 event notifications
   SamJsonMessagesQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -47,7 +48,6 @@ Resources:
       VisibilityTimeout: 300  # 5 minutes (matches Lambda timeout)
       MessageRetentionPeriod: 1209600  # 14 days
       ReceiveMessageWaitTimeSeconds: 20  # Long polling
-      KmsMasterKeyId: alias/aws/sqs
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt SamJsonMessagesDLQ.Arn
         maxReceiveCount: 3

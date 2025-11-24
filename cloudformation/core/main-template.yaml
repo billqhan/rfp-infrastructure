@@ -197,6 +197,7 @@ Resources:
           Value: 'AI-RFP-Response-Agent'
 
   # SQS Queue with Dead Letter Queue
+  # Note: Encryption disabled to support S3 event notifications
   SqsSamJsonMessagesDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -205,7 +206,6 @@ Resources:
         - !Sub '${BucketPrefix}-sqs-sam-json-messages-dlq-${Environment}'
         - !Sub 'sqs-sam-json-messages-dlq-${Environment}'
       MessageRetentionPeriod: 1209600  # 14 days
-      KmsMasterKeyId: alias/aws/sqs
 
   SqsSamJsonMessagesQueue:
     Type: AWS::SQS::Queue
@@ -219,7 +219,6 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt SqsSamJsonMessagesDeadLetterQueue.Arn
         maxReceiveCount: 3
-      KmsMasterKeyId: alias/aws/sqs
 
 Outputs:
   SamDataInBucketName:
