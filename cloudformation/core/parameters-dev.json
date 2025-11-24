@@ -5,23 +5,23 @@
   },
   {
     "ParameterKey": "SamApiKey",
-    "ParameterValue": "YOUR_SAM_API_KEY_HERE"
+    "ParameterValue": "SAM-95a93ccd-9d79-41be-a0a5-0e01ef13a75a"
   },
   {
     "ParameterKey": "CompanyName",
-    "ParameterValue": "Your Company Name"
+    "ParameterValue": "L3Harris"
   },
   {
     "ParameterKey": "CompanyContact",
-    "ParameterValue": "contact@yourcompany.com"
+    "ParameterValue": "bill.han@l3harris.com"
   },
   {
     "ParameterKey": "BucketPrefix",
-    "ParameterValue": "ktest"
+    "ParameterValue": "rfp-han-dev"
   },
   {
     "ParameterKey": "TemplatesBucketName",
-    "ParameterValue": "your-cloudformation-templates-bucket"
+    "ParameterValue": "dev-cloudformation-templates"
   },
   {
     "ParameterKey": "TemplatesBucketPrefix",

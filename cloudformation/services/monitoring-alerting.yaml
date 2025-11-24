@@ -38,42 +38,9 @@ Resources:
       Protocol: email
       Endpoint: !Ref AlertEmail
 
-  # CloudWatch Log Groups with Retention
-  SamGovDailyDownloadLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-gov-daily-download-${Environment}'
-      RetentionInDays: 30
-
-  SamJsonProcessorLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-json-processor-${Environment}'
-      RetentionInDays: 30
-
-  SamSqsGenerateMatchReportsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-sqs-generate-match-reports-${Environment}'
-      RetentionInDays: 30
-
-  SamProduceUserReportLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-produce-user-report-${Environment}'
-      RetentionInDays: 30
-
-  SamMergeAndArchiveResultLogsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-merge-and-archive-result-logs-${Environment}'
-      RetentionInDays: 30
-
-  SamProduceWebReportsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/sam-produce-web-reports-${Environment}'
-      RetentionInDays: 30
+  # CloudWatch Log Groups - Let Lambda auto-create to avoid permission issues
+  # Log groups will be created automatically when Lambda functions first execute
+  # Retention can be set manually or via Lambda configuration
 
   # CloudWatch Alarms for Lambda Functions
   SamGovDailyDownloadErrorAlarm:
@@ -485,115 +452,9 @@ Resources:
         - !Ref SamAlertsSnsTopic
 
   # Log Metric Filters for Custom Metrics
-  SamApiCallsMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamGovDailyDownloadLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="API_CALL_SUCCESS"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'SuccessfulApiCalls'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamApiCallsErrorMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamGovDailyDownloadLogGroup
-      FilterPattern: '[timestamp, requestId, level="ERROR", message="API_CALL_FAILED"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'FailedApiCalls'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamOpportunityProcessedMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamJsonProcessorLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="OPPORTUNITY_PROCESSED"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'OpportunitiesProcessed'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamOpportunityProcessingErrorMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamJsonProcessorLogGroup
-      FilterPattern: '[timestamp, requestId, level="ERROR", message="OPPORTUNITY_PROCESSING_FAILED"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'OpportunityProcessingErrors'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamMatchFoundMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="MATCH_FOUND", score]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'MatchesFound'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamMatchScoreMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="MATCH_SCORE", score]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'MatchScore'
-          MetricValue: '$score'
-          DefaultValue: 0
-
-  SamNoMatchFoundMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="NO_MATCH_FOUND"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'NoMatchesFound'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamBedrockCallsMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="BEDROCK_CALL_SUCCESS"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'BedrockCallsSuccess'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamBedrockErrorsMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="ERROR", message="BEDROCK_CALL_FAILED"]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'BedrockCallsError'
-          MetricValue: '1'
-          DefaultValue: 0
-
-  SamProcessingRateMetricFilter:
-    Type: AWS::Logs::MetricFilter
-    Properties:
-      LogGroupName: !Ref SamSqsGenerateMatchReportsLogGroup
-      FilterPattern: '[timestamp, requestId, level="INFO", message="PROCESSING_RATE", rate]'
-      MetricTransformations:
-        - MetricNamespace: 'AI-RFP-Response-Agent'
-          MetricName: 'ProcessingRate'
-          MetricValue: '$rate'
-          DefaultValue: 0
+  # DISABLED - Requires log groups to be pre-created with correct names
+  # Can be enabled manually after Lambda functions create their log groups
+  # Uncomment and update log group names with correct prefix when ready
 
 Outputs:
   SamAlertsTopicArn:

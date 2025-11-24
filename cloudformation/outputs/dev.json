@@ -1,0 +1,86 @@
+{
+  "version": "1.0.0",
+  "environment": "dev",
+  "timestamp": "2025-11-24T01:43:59Z",
+  "infrastructure": {
+    "masterStack": "rfp-dev-master",
+    "region": "us-east-1"
+  },
+  "apiGateway": {
+    "url": "",
+    "id": ""
+  },
+  "cloudfront": {
+    "distributionId": "",
+    "domain": "",
+    "url": ""
+  },
+  "s3": {
+    "dataBucket": "rfp-han-dev-sam-data-in-dev",
+    "jsonResourcesBucket": "rfp-han-dev-sam-extracted-json-resources-dev"
+  },
+  "sqs": {
+    "jsonMessagesQueueUrl": "https://sqs.us-east-1.amazonaws.com/160936122037/rfp-han-dev-sqs-sam-json-messages-dev"
+  },
+  "lambda": {
+    "samGovDailyDownloadArn": "arn:aws:lambda:us-east-1:160936122037:function:rfp-han-dev-sam-gov-daily-download-dev",
+    "samJsonProcessorArn": "arn:aws:lambda:us-east-1:160936122037:function:rfp-han-dev-sam-json-processor-dev"
+  },
+  "security": {
+    "kmsKeyArn": "arn:aws:kms:us-east-1:160936122037:key/498fd2da-e4a8-4a1b-948f-497e74eef75a"
+  },
+  "monitoring": {
+    "snsTopicArn": "arn:aws:sns:us-east-1:160936122037:rfp-han-dev-sam-alerts-dev",
+    "dashboardUrl": "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=AI-RFP-Response-Agent-dev"
+  },
+  "allOutputs": [
+    {
+        "OutputKey": "SamExtractedJsonResourcesBucketName",
+        "OutputValue": "rfp-han-dev-sam-extracted-json-resources-dev",
+        "Description": "Name of the extracted JSON resources bucket",
+        "ExportName": "rfp-dev-master-SamExtractedJsonResourcesBucket"
+    },
+    {
+        "OutputKey": "SamDataInBucketName",
+        "OutputValue": "rfp-han-dev-sam-data-in-dev",
+        "Description": "Name of the SAM data input bucket",
+        "ExportName": "rfp-dev-master-SamDataInBucket"
+    },
+    {
+        "OutputKey": "SamGovDailyDownloadFunctionArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:160936122037:function:rfp-han-dev-sam-gov-daily-download-dev",
+        "Description": "ARN of the SAM.gov daily download Lambda function",
+        "ExportName": "rfp-dev-master-SamGovDailyDownloadFunction"
+    },
+    {
+        "OutputKey": "SamProcessingKMSKeyArn",
+        "OutputValue": "arn:aws:kms:us-east-1:160936122037:key/498fd2da-e4a8-4a1b-948f-497e74eef75a",
+        "Description": "ARN of the KMS key for SAM processing encryption",
+        "ExportName": "rfp-dev-master-SamProcessingKMSKey"
+    },
+    {
+        "OutputKey": "SqsSamJsonMessagesQueueUrl",
+        "OutputValue": "https://sqs.us-east-1.amazonaws.com/160936122037/rfp-han-dev-sqs-sam-json-messages-dev",
+        "Description": "URL of the SQS queue for JSON messages",
+        "ExportName": "rfp-dev-master-SqsSamJsonMessagesQueue"
+    },
+    {
+        "OutputKey": "SamAlertsTopicArn",
+        "OutputValue": "arn:aws:sns:us-east-1:160936122037:rfp-han-dev-sam-alerts-dev",
+        "Description": "ARN of the SNS topic for alerts",
+        "ExportName": "rfp-dev-master-SamAlertsTopic"
+    },
+    {
+        "OutputKey": "SamProcessingDashboardUrl",
+        "OutputValue": "https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=AI-RFP-Response-Agent-dev",
+        "Description": "URL of the CloudWatch dashboard",
+        "ExportName": "rfp-dev-master-SamProcessingDashboard"
+    },
+    {
+        "OutputKey": "SamJsonProcessorFunctionArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:160936122037:function:rfp-han-dev-sam-json-processor-dev",
+        "Description": "ARN of the JSON processor Lambda function",
+        "ExportName": "rfp-dev-master-SamJsonProcessorFunction"
+    }
+]
+}
