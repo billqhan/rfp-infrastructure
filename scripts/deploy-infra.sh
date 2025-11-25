@@ -110,9 +110,9 @@ fi
 
 echo "✅ Master stack deployment complete"
 
-# Publish outputs
-echo "📝 Publishing stack outputs..."
-"$SCRIPT_DIR/publish-outputs.sh" "$ENVIRONMENT"
+# Publish outputs - DISABLED (script not found)
+# echo "📝 Publishing stack outputs..."
+# "$SCRIPT_DIR/publish-outputs.sh" "$ENVIRONMENT"
 
 # Display CloudFront URL if available
 echo ""

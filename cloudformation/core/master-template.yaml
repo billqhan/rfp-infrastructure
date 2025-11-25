@@ -43,9 +43,24 @@ Parameters:
     Description: 'ID of the Bedrock Knowledge Base for company information (use PLACEHOLDER for initial deployment)'
 
 Resources:
+  # VPC and Network Stack
+  VpcNetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}core/vpc-network.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        VpcCidr: '172.31.0.0/16'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: 'AI-RFP-Response-Agent'
+
   # Main Infrastructure Stack (S3 Buckets, SQS)
   MainInfrastructureStack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: VpcNetworkStack
     Properties:
       TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}core/main-template.yaml'
       Parameters:
@@ -181,23 +196,47 @@ Resources:
         - Key: Project
           Value: 'AI-RFP-Response-Agent'
 
-  # CloudFront UI Distribution Stack
-  CloudFrontUIStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: MainInfrastructureStack
-    Properties:
-      TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/cloudfront-ui.yaml'
-      Parameters:
-        Environment: !Ref Environment
-        BucketPrefix: !Ref BucketPrefix
-        UiBucketName: !GetAtt MainInfrastructureStack.Outputs.UiBucketName
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Project
-          Value: 'AI-RFP-Response-Agent'
+  # CloudFront UI Distribution Stack - DISABLED (deployed separately by deploy-complete.sh after ALB)
+  # CloudFrontUIStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: MainInfrastructureStack
+  #   Properties:
+  #     TemplateURL: !Sub 'https://${TemplatesBucketName}.s3.amazonaws.com/${TemplatesBucketPrefix}services/cloudfront-ui.yaml'
+  #     Parameters:
+  #       Environment: !Ref Environment
+  #       BucketPrefix: !Ref BucketPrefix
+  #       UiBucketName: !GetAtt MainInfrastructureStack.Outputs.UiBucketName
+  #     Tags:
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Project
+  #         Value: 'AI-RFP-Response-Agent'
 
 Outputs:
+  VpcId:
+    Description: 'VPC ID'
+    Value: !GetAtt VpcNetworkStack.Outputs.VpcId
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  PublicSubnet1Id:
+    Description: 'Public Subnet 1 ID'
+    Value: !GetAtt VpcNetworkStack.Outputs.PublicSubnet1Id
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1'
+
+  PublicSubnet2Id:
+    Description: 'Public Subnet 2 ID'
+    Value: !GetAtt VpcNetworkStack.Outputs.PublicSubnet2Id
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet2'
+
+  PublicSubnetIds:
+    Description: 'Comma-separated list of public subnet IDs'
+    Value: !GetAtt VpcNetworkStack.Outputs.PublicSubnetIds
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnets'
+
   SamDataInBucketName:
     Description: 'Name of the SAM data input bucket'
     Value: !GetAtt MainInfrastructureStack.Outputs.SamDataInBucketName
@@ -247,14 +286,15 @@ Outputs:
   #   Export:
   #     Name: !Sub '${AWS::StackName}-SamProcessingDashboard'
   
-  CloudFrontDistributionId:
-    Description: 'CloudFront distribution ID for the UI'
-    Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionId
-    Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
-  
-  CloudFrontDistributionUrl:
-    Description: 'CloudFront distribution URL for the UI'
-    Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionUrl
-    Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontUrl'
+  # CloudFront outputs - DISABLED (CloudFront deployed separately)
+  # CloudFrontDistributionId:
+  #   Description: 'CloudFront distribution ID for the UI'
+  #   Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionId
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+  # 
+  # CloudFrontDistributionUrl:
+  #   Description: 'CloudFront distribution URL for the UI'
+  #   Value: !GetAtt CloudFrontUIStack.Outputs.CloudFrontDistributionUrl
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-CloudFrontUrl'

@@ -122,8 +122,8 @@ Resources:
                   - s3:PutObjectAcl
                 Resource: !If 
                   - HasBucketPrefix
-                    - !Sub 'arn:aws:s3:::${BucketPrefix}-sam-extracted-json-resources-${Environment}/*'
-                    - !Sub 'arn:aws:s3:::sam-extracted-json-resources-${Environment}/*'
+                  - !Sub 'arn:aws:s3:::${BucketPrefix}-sam-extracted-json-resources-${Environment}/*'
+                  - !Sub 'arn:aws:s3:::sam-extracted-json-resources-${Environment}/*'
         # DISABLED - CloudWatch custom metrics
         # - PolicyName: CloudWatchMetrics
         #   PolicyDocument:
@@ -132,7 +132,9 @@ Resources:
         #       - Effect: Allow
         #         Action:
         #           - cloudwatch:PutMetricData
-        #         Resource: '*'  SamSqsGenerateMatchReportsRole:
+        #         Resource: '*'
+
+  SamSqsGenerateMatchReportsRole:
     Type: AWS::IAM::Role
     Properties:
 

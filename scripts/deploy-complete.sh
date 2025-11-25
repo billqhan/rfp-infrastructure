@@ -77,16 +77,6 @@ if [ "$SKIP_INFRA" != "true" ]; then
     else
         echo -e "${YELLOW}⚠️  deploy-infra.sh not found, skipping${NC}"
     fi
-    
-    # Deploy CloudFront (may need manual script if master stack has issues)
-    echo ""
-    echo -e "${BLUE}Deploying CloudFront CDN...${NC}"
-    if [ -f "$SCRIPT_DIR/deploy-cloudfront-manual.sh" ]; then
-        bash "$SCRIPT_DIR/deploy-cloudfront-manual.sh"
-        echo -e "${GREEN}✅ CloudFront deployment completed${NC}"
-    else
-        echo -e "${YELLOW}⚠️  CloudFront already deployed or script not found${NC}"
-    fi
 else
     echo -e "${YELLOW}⏭️  Skipping infrastructure deployment (SKIP_INFRA=true)${NC}"
 fi
@@ -109,6 +99,16 @@ if [ "$SKIP_ALB" != "true" ]; then
         echo -e "${RED}❌ deploy-alb.sh not found${NC}"
         echo -e "${YELLOW}ℹ️  ALB is required for Java API routing${NC}"
         exit 1
+    fi
+    
+    # Deploy CloudFront after ALB (CloudFront needs ALB DNS name)
+    echo ""
+    echo -e "${BLUE}Deploying CloudFront CDN...${NC}"
+    if [ -f "$SCRIPT_DIR/deploy-cloudfront-manual.sh" ]; then
+        bash "$SCRIPT_DIR/deploy-cloudfront-manual.sh"
+        echo -e "${GREEN}✅ CloudFront deployment completed${NC}"
+    else
+        echo -e "${YELLOW}⚠️  CloudFront script not found${NC}"
     fi
 else
     echo -e "${YELLOW}⏭️  Skipping ALB deployment (SKIP_ALB=true)${NC}"
@@ -142,7 +142,7 @@ if [ "$SKIP_JAVA" != "true" ]; then
         echo ""
         echo -e "${BLUE}Deploying to ECS...${NC}"
         if [ -f "deploy-ecs.sh" ]; then
-            bash deploy-ecs.sh "$ENVIRONMENT"
+            CREATE_INFRA=true bash deploy-ecs.sh "$ENVIRONMENT"
             echo -e "${GREEN}✅ ECS deployment completed${NC}"
         else
             echo -e "${RED}❌ deploy-ecs.sh not found${NC}"
@@ -169,12 +169,33 @@ else
 fi
 
 # ===========================================================================
-# STEP 4: Lambda Functions Deployment
+# STEP 4: CloudFront Distribution Deployment
+# ===========================================================================
+if [ "$SKIP_CLOUDFRONT" != "true" ]; then
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}STEP 4: CLOUDFRONT DISTRIBUTION DEPLOYMENT${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    if [ -f "$SCRIPT_DIR/deploy-cloudfront.sh" ]; then
+        echo -e "${BLUE}Deploying CloudFront distribution...${NC}"
+        bash "$SCRIPT_DIR/deploy-cloudfront.sh" "$ENVIRONMENT"
+        echo -e "${GREEN}✅ CloudFront deployment completed${NC}"
+    else
+        echo -e "${YELLOW}⚠️  deploy-cloudfront.sh not found, skipping${NC}"
+    fi
+else
+    echo -e "${YELLOW}⏭️  Skipping CloudFront deployment (SKIP_CLOUDFRONT=true)${NC}"
+fi
+
+# ===========================================================================
+# STEP 5: Lambda Functions Deployment
 # ===========================================================================
 if [ "$SKIP_LAMBDA" != "true" ]; then
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}STEP 4: LAMBDA FUNCTIONS DEPLOYMENT${NC}"
+    echo -e "${CYAN}STEP 5: LAMBDA FUNCTIONS DEPLOYMENT${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
     echo ""
     
@@ -199,12 +220,12 @@ else
 fi
 
 # ===========================================================================
-# STEP 5: UI Deployment
+# STEP 6: UI Deployment
 # ===========================================================================
 if [ "$SKIP_UI" != "true" ]; then
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}STEP 5: UI DEPLOYMENT${NC}"
+    echo -e "${CYAN}STEP 6: UI DEPLOYMENT${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════${NC}"
     echo ""
     

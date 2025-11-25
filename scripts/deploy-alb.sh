@@ -127,84 +127,98 @@ log_success "ALB URL: $ALB_URL"
 log_success "Target Group ARN: $TG_ARN"
 log_success "Task Security Group: $TASK_SG"
 
-# Step 5: Update ECS service to use ALB
-log_info "Step 5: Updating ECS service to use ALB..."
+# Step 5: Update ECS service to use ALB (if service exists)
+log_info "Step 5: Checking if ECS service exists..."
 
-# Get current network configuration
-SUBNETS=$(aws ecs describe-services \
+# Check if service exists
+SERVICE_EXISTS=$(aws ecs describe-services \
     --cluster $CLUSTER_NAME \
     --services $SERVICE_NAME \
     --region $REGION \
-    --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' \
-    --output json)
+    --query 'services[0].serviceName' \
+    --output text 2>/dev/null)
 
-SUBNETS_LIST=$(echo $SUBNETS | jq -r 'join(",")')
-
-# Update service with ALB configuration
-aws ecs update-service \
-    --cluster $CLUSTER_NAME \
-    --service $SERVICE_NAME \
-    --load-balancers "targetGroupArn=${TG_ARN},containerName=java-api,containerPort=8080" \
-    --health-check-grace-period-seconds 60 \
-    --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS_LIST}],securityGroups=[${TASK_SG}],assignPublicIp=ENABLED}" \
-    --region $REGION \
-    --query 'service.serviceName' \
-    --output text >/dev/null
-
-log_success "ECS service updated"
-
-# Step 6: Force new deployment to register with ALB
-log_info "Step 6: Forcing new deployment to register tasks..."
-aws ecs update-service \
-    --cluster $CLUSTER_NAME \
-    --service $SERVICE_NAME \
-    --force-new-deployment \
-    --region $REGION \
-    --query 'service.serviceName' \
-    --output text >/dev/null
-
-log_success "New deployment initiated"
-
-# Step 7: Wait for targets to become healthy
-log_info "Step 7: Waiting for targets to become healthy (this may take 2-3 minutes)..."
-ATTEMPTS=0
-MAX_ATTEMPTS=20
-
-while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-    sleep 15
-    ATTEMPTS=$((ATTEMPTS + 1))
+if [ "$SERVICE_EXISTS" == "$SERVICE_NAME" ]; then
+    log_info "Updating ECS service to use ALB..."
     
-    HEALTHY_COUNT=$(aws elbv2 describe-target-health \
-        --target-group-arn $TG_ARN \
+    # Get current network configuration
+    SUBNETS=$(aws ecs describe-services \
+        --cluster $CLUSTER_NAME \
+        --services $SERVICE_NAME \
         --region $REGION \
-        --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
-        --output text)
-    
-    if [ "$HEALTHY_COUNT" -gt 0 ]; then
-        log_success "Targets are healthy!"
-        break
+        --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' \
+        --output json)
+
+    SUBNETS_LIST=$(echo $SUBNETS | jq -r 'join(",")')
+
+    # Update service with ALB configuration
+    aws ecs update-service \
+        --cluster $CLUSTER_NAME \
+        --service $SERVICE_NAME \
+        --load-balancers "targetGroupArn=${TG_ARN},containerName=java-api,containerPort=8080" \
+        --health-check-grace-period-seconds 60 \
+        --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS_LIST}],securityGroups=[${TASK_SG}],assignPublicIp=ENABLED}" \
+        --region $REGION \
+        --query 'service.serviceName' \
+        --output text >/dev/null
+
+    log_success "ECS service updated"
+
+    # Step 6: Force new deployment to register with ALB
+    log_info "Step 6: Forcing new deployment to register tasks..."
+    aws ecs update-service \
+        --cluster $CLUSTER_NAME \
+        --service $SERVICE_NAME \
+        --force-new-deployment \
+        --region $REGION \
+        --query 'service.serviceName' \
+        --output text >/dev/null
+
+    log_success "New deployment initiated"
+
+    # Step 7: Wait for targets to become healthy
+    log_info "Step 7: Waiting for targets to become healthy (this may take 2-3 minutes)..."
+    ATTEMPTS=0
+    MAX_ATTEMPTS=20
+
+    while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+        sleep 15
+        ATTEMPTS=$((ATTEMPTS + 1))
+        
+        HEALTHY_COUNT=$(aws elbv2 describe-target-health \
+            --target-group-arn $TG_ARN \
+            --region $REGION \
+            --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
+            --output text)
+        
+        if [ "$HEALTHY_COUNT" -gt 0 ]; then
+            log_success "Targets are healthy!"
+            break
+        fi
+        
+        log_info "Waiting for targets to become healthy... (attempt $ATTEMPTS/$MAX_ATTEMPTS)"
+    done
+
+    if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+        log_warning "Targets did not become healthy within expected time"
+        log_info "Check target health manually: aws elbv2 describe-target-health --target-group-arn $TG_ARN"
     fi
-    
-    log_info "Waiting for targets to become healthy... (attempt $ATTEMPTS/$MAX_ATTEMPTS)"
-done
 
-if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
-    log_warning "Targets did not become healthy within expected time"
-    log_info "Check target health manually: aws elbv2 describe-target-health --target-group-arn $TG_ARN"
-fi
+    # Step 8: Test health endpoint
+    log_info "Step 8: Testing health endpoint..."
+    sleep 5
 
-# Step 8: Test health endpoint
-log_info "Step 8: Testing health endpoint..."
-sleep 5
+    HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${ALB_URL}/api/actuator/health" || echo "000")
 
-HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${ALB_URL}/api/actuator/health" || echo "000")
-
-if [ "$HEALTH_RESPONSE" = "200" ]; then
-    log_success "Health check passed!"
-    curl -s "${ALB_URL}/api/actuator/health" | jq .
+    if [ "$HEALTH_RESPONSE" = "200" ]; then
+        log_success "Health check passed!"
+        curl -s "${ALB_URL}/api/actuator/health" | jq .
+    else
+        log_warning "Health check returned status: $HEALTH_RESPONSE"
+        log_info "The service may still be starting up. Test manually: ${ALB_URL}/api/actuator/health"
+    fi
 else
-    log_warning "Health check returned status: $HEALTH_RESPONSE"
-    log_info "The service may still be starting up. Test manually: ${ALB_URL}/api/actuator/health"
+    log_info "ECS service does not exist yet. ALB is ready for service creation."
 fi
 
 echo ""

@@ -21,10 +21,10 @@
   },
   {
     "ParameterKey": "TemplatesBucketName",
-    "ParameterValue": "dev-cloudformation-templates"
+    "ParameterValue": "rfp-cloudformation-templates-dev-160936122037"
   },
   {
     "ParameterKey": "TemplatesBucketPrefix",
-    "ParameterValue": "ai-rfp-response-agent/"
+    "ParameterValue": ""
   }
 ]
