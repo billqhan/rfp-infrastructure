@@ -3,7 +3,7 @@
 # Deploy Application Load Balancer for Java API ECS Service
 # This script creates an ALB to provide a stable endpoint for the Java API
 
-set -e
+set -e  # Exit on error (will be disabled for optional service update)
 
 ENVIRONMENT=${1:-dev}
 REGION="us-east-1"
@@ -128,15 +128,30 @@ log_success "Target Group ARN: $TG_ARN"
 log_success "Task Security Group: $TASK_SG"
 
 # Step 5: Update ECS service to use ALB (if service exists)
+# Disable exit-on-error for this section since service may not exist yet
+set +e
+
 log_info "Step 5: Checking if ECS service exists..."
 
-# Check if service exists
-SERVICE_EXISTS=$(aws ecs describe-services \
-    --cluster $CLUSTER_NAME \
-    --services $SERVICE_NAME \
+# Check if cluster exists first
+CLUSTER_EXISTS=$(aws ecs describe-clusters \
+    --clusters $CLUSTER_NAME \
     --region $REGION \
-    --query 'services[0].serviceName' \
+    --query 'clusters[0].status' \
     --output text 2>/dev/null)
+
+if [ "$CLUSTER_EXISTS" != "ACTIVE" ]; then
+    log_info "ECS cluster does not exist yet. ALB is ready for service creation."
+    SERVICE_EXISTS=""
+else
+    # Check if service exists
+    SERVICE_EXISTS=$(aws ecs describe-services \
+        --cluster $CLUSTER_NAME \
+        --services $SERVICE_NAME \
+        --region $REGION \
+        --query 'services[0].serviceName' \
+        --output text 2>/dev/null)
+fi
 
 if [ "$SERVICE_EXISTS" == "$SERVICE_NAME" ]; then
     log_info "Updating ECS service to use ALB..."
@@ -220,6 +235,9 @@ if [ "$SERVICE_EXISTS" == "$SERVICE_NAME" ]; then
 else
     log_info "ECS service does not exist yet. ALB is ready for service creation."
 fi
+
+# Re-enable exit-on-error
+set -e
 
 echo ""
 log_success "ALB deployment complete!"
